@@ -8,6 +8,7 @@ import bs4
 import pprint
 import re
 import os
+import requests
 
 # local modules
 import credentials
@@ -26,6 +27,8 @@ twitter = twitter.Api(consumer_key=os.getenv('TWITTER_CONSUMER_KEY'),
                       access_token_secret=os.getenv('TWITTER_ACCESS_TOKEN_SECRET'))
 
 twitter_regex = r"(status\/)(\d*)"
+url_regex = r"(?:(?:https?|ftp|file):\/\/|www\.|ftp\.)(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)" \
+            r"|[-A-Z0-9+&@#\/%=~_|$?!:,.])*(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)|[A-Z0-9+&@#\/%=~_|$])"
 
 # subreddits = reddit.subreddit('soccer+nba')
 subreddits = reddit.subreddit('testingMyBotsAndStuff')
@@ -43,22 +46,47 @@ def get_highest_bitrate(videos):
 
     return highest_bitrate
 
-for submission in subreddits.stream.submissions():
-    # check url for supported domains (twitter)
-    if submission.domain == "twitter.com":
-        # get the tweet_id from the url
-        matches = re.search(twitter_regex, submission.url, re.IGNORECASE)
-        tweet_id = matches[2]
-        # get the video url from the tweet
-        media = twitter.GetStatus(tweet_id).media
-        if media:
-            for item in media:
-                if item and item.type == 'video':
-                    url = get_highest_bitrate(item.video_info['variants'])['url']
-                    print(url)
-    # check selftext for urls
-    url_regex = r"(?:(?:https?|ftp|file):\/\/|www\.|ftp\.)(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)|[-A-Z0-9+&@#\/%=~_|$?!:,.])*(?:\([-A-Z0-9+&@#\/%=~_|$?!:,.]*\)|[A-Z0-9+&@#\/%=~_|$])"
-    matches = re.findall(url_regex, submission.selftext, re.IGNORECASE | re.MULTILINE)
-    if matches:
-        print(submission.title, matches)
 
+def submission_loop():
+    for submission in subreddits.stream.submissions():
+        # check url for supported domains (twitter)
+        title_media_url = None
+        if submission.domain == "twitter.com":
+            # get the tweet_id from the url
+            matches = re.search(twitter_regex, submission.url, re.IGNORECASE)
+            tweet_id = matches[2]
+            # get the video url from the tweet
+            media = twitter.GetStatus(tweet_id).media
+            if media:
+                for item in media:
+                    if item and item.type == 'video':
+                        title_media_url = get_highest_bitrate(item.video_info['variants'])['url']
+        # check selftext for urls
+        matches = re.findall(url_regex, submission.selftext, re.IGNORECASE | re.MULTILINE)
+        if title_media_url:
+            print("Title: {}\nURLs: {}".format(submission.title, title_media_url))
+            upload_streamable(title_media_url)
+        if matches:
+            print("Title: {}\nURLs: {}".format(submission.title, matches))
+            for match in matches:
+                upload_streamable(match)
+
+
+def upload_streamable(url):
+    res = requests.get('https://api.streamable.com/import?url={}'.format(url),
+                       auth=(credentials.streamable['email'], credentials.streamable['password']))
+    # streamable api has terrible error handling.
+    # Instead of using a different status for an error, they just omit that key and add a different key for each error.
+    if 'status' in res.json():
+        if res.json().status == 1:
+            construct_comment(res.json().shortcode)
+    else:
+        print(res.json())
+
+
+def construct_comment(shortcode):
+    pass
+
+
+if __name__ == '__main__':
+    submission_loop()
