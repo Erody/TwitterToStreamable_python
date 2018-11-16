@@ -9,6 +9,7 @@ import pprint
 import re
 import os
 import requests
+import datetime
 
 # local modules
 import credentials
@@ -49,6 +50,13 @@ def get_highest_bitrate(videos):
 
 def submission_loop():
     for submission in subreddits.stream.submissions():
+        today = datetime.datetime.now()
+        created_utc = datetime.datetime.utcfromtimestamp(submission.created_utc)
+        age_timedelta = (today - created_utc)
+        age_of_post = age_timedelta.total_seconds() / 60 / 60 / 24
+        # don't comment if the post is older than 30 days. Prevents TOO OLD exception
+        if age_of_post >= 30:
+            continue
         # check url for supported domains (twitter)
         title_media_url = None
         if submission.domain == "twitter.com":
@@ -65,11 +73,19 @@ def submission_loop():
         matches = re.findall(url_regex, submission.selftext, re.IGNORECASE | re.MULTILINE)
         if title_media_url:
             print("Title: {}\nURLs: {}".format(submission.title, title_media_url))
-            upload_streamable(title_media_url)
-        if matches:
-            print("Title: {}\nURLs: {}".format(submission.title, matches))
-            for match in matches:
-                upload_streamable(match)
+            shortcode = upload_streamable(title_media_url)
+            streamable_url = 'https://streamable.com/{}'.format(shortcode)
+            comment_text = construct_comment(submission.title, streamable_url)
+            submission.reply(comment_text)
+            print("Commented on: {}".format(submission.title))
+        # if matches:
+        #     print("Title: {}\nURLs: {}".format(submission.title, matches))
+        #     for match in matches:
+        #         shortcode = upload_streamable(match)
+        #         streamable_url = 'https://streamable.com/{}'.format(shortcode)
+        #         print(streamable_url)
+        #         comment_text = construct_comment(submission.title, streamable_url)
+        #         submission.reply(comment_text)
 
 
 def upload_streamable(url):
@@ -78,14 +94,17 @@ def upload_streamable(url):
     # streamable api has terrible error handling.
     # Instead of using a different status for an error, they just omit that key and add a different key for each error.
     if 'status' in res.json():
-        if res.json().status == 1:
-            construct_comment(res.json().shortcode)
+        if res.json()['status'] == 1:
+            return res.json()['shortcode']
     else:
         print(res.json())
 
 
-def construct_comment(shortcode):
-    pass
+def construct_comment(title, streamable_url):
+    # footer = '___  \n^This ^message ^was ^created ^by ^a ^bot  \n[Request Mirror](https://www.reddit.com/message/compose?to=twittertostreamable&subject=Request%20mirror&message=Enter%20your%20urls%20here.%20It%20can%20take%20up%20to%202%20minutes%20before%20you%20receive%20a%20reply.) | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)'
+    footer = '___  \n^This ^message ^was ^created ^by ^a ^bot  \n[Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)'
+    head = '**[Mirror - {}]({})**  \n{}'.format(title, streamable_url, footer)
+    return head
 
 
 if __name__ == '__main__':
