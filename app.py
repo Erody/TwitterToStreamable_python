@@ -98,7 +98,7 @@ def upload_streamable(url):
 
 def construct_comment(title, streamable_url):
     # footer = '___  \n^This ^message ^was ^created ^by ^a ^bot  \n[Request Mirror](https://www.reddit.com/message/compose?to=twittertostreamable&subject=Request%20mirror&message=Enter%20your%20urls%20here.%20It%20can%20take%20up%20to%202%20minutes%20before%20you%20receive%20a%20reply.) | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)'
-    footer = "___  \n^This ^message ^was ^created ^by ^a ^bot  \nI'm back! | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)"
+    footer = "___  \n^This ^message ^was ^created ^by ^a ^bot  \nI'm back! | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/TwitterToStreamable_python)"
     head = '**[Mirror - {}]({})**  \n{}'.format(title, streamable_url, footer)
     return head
 
