@@ -2,7 +2,6 @@
 import praw
 from dotenv import load_dotenv
 import twitter
-import bs4
 
 # native modules
 import pprint
@@ -11,16 +10,13 @@ import os
 import requests
 import datetime
 
-# local modules
-import credentials
-
 load_dotenv()
 
-reddit = praw.Reddit(client_id=credentials.reddit['client_id'],
-                     client_secret=credentials.reddit['client_secret'],
-                     user_agent=credentials.reddit['user_agent'],
-                     password=credentials.reddit['password'],
-                     username=credentials.reddit['username'])
+reddit = praw.Reddit(client_id=os.getenv('REDDIT_CLIENT_ID'),
+                     client_secret=os.getenv('REDDIT_CLIENT_SECRET'),
+                     user_agent=os.getenv('REDDIT_USER_AGENT'),
+                     password=os.getenv('REDDIT_PASSWORD'),
+                     username=os.getenv('REDDIT_USERNAME'))
 
 twitter = twitter.Api(consumer_key=os.getenv('TWITTER_CONSUMER_KEY'),
                       consumer_secret=os.getenv('TWITTER_CONSUMER_SECRET'),
@@ -90,7 +86,7 @@ def submission_loop():
 
 def upload_streamable(url):
     res = requests.get('https://api.streamable.com/import?url={}'.format(url),
-                       auth=(credentials.streamable['email'], credentials.streamable['password']))
+                       auth=(os.getenv('STREAMABLE_EMAIL'), os.getenv('STREAMABLE_PASSWORD')))
     # streamable api has terrible error handling.
     # Instead of using a different status for an error, they just omit that key and add a different key for each error.
     if 'status' in res.json():
@@ -102,7 +98,7 @@ def upload_streamable(url):
 
 def construct_comment(title, streamable_url):
     # footer = '___  \n^This ^message ^was ^created ^by ^a ^bot  \n[Request Mirror](https://www.reddit.com/message/compose?to=twittertostreamable&subject=Request%20mirror&message=Enter%20your%20urls%20here.%20It%20can%20take%20up%20to%202%20minutes%20before%20you%20receive%20a%20reply.) | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)'
-    footer = '___  \n^This ^message ^was ^created ^by ^a ^bot  \n[Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)'
+    footer = "___  \n^This ^message ^was ^created ^by ^a ^bot  \nI'm back! | [Creator](https://www.reddit.com/user/eRodY/) | [v2.0.0](https://github.com/Erody/twitter-to-streamable)"
     head = '**[Mirror - {}]({})**  \n{}'.format(title, streamable_url, footer)
     return head
 
